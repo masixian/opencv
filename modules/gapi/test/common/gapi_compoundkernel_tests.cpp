@@ -8,7 +8,7 @@
 // FIXME: move out from Common
 
 #include "../test_precomp.hpp"
-#include "opencv2/gapi/cpu/core.hpp"
+#include <opencv2/gapi/cpu/core.hpp>
 
 #include <ade/util/algorithm.hpp>
 
@@ -235,7 +235,7 @@ TEST(GCompoundKernel, ReplaceDefaultKernel)
     cv::GMat in1, in2;
     auto out = cv::gapi::add(in1, in2);
     const auto custom_pkg = cv::gapi::kernels<GCompoundAddImpl>();
-    const auto full_pkg   = cv::gapi::combine(cv::gapi::core::cpu::kernels(), custom_pkg, cv::unite_policy::REPLACE);
+    const auto full_pkg   = cv::gapi::combine(cv::gapi::core::cpu::kernels(), custom_pkg);
     cv::GComputation comp(cv::GIn(in1, in2), cv::GOut(out));
     cv::Mat in_mat1 = cv::Mat::eye(3, 3, CV_8UC1),
             in_mat2 = cv::Mat::eye(3, 3, CV_8UC1),
@@ -245,7 +245,7 @@ TEST(GCompoundKernel, ReplaceDefaultKernel)
     comp.apply(cv::gin(in_mat1, in_mat2), cv::gout(out_mat), cv::compile_args(full_pkg));
     ref_mat = in_mat1 - in_mat2 - in_mat2;
 
-    EXPECT_EQ(0, cv::countNonZero(out_mat != ref_mat));
+    EXPECT_EQ(0, cvtest::norm(out_mat, ref_mat, NORM_INF));
 }
 
 TEST(GCompoundKernel, DoubleAddC)
@@ -257,7 +257,7 @@ TEST(GCompoundKernel, DoubleAddC)
     auto out       = cv::gapi::addC(super, s);
 
     const auto custom_pkg = cv::gapi::kernels<GCompoundDoubleAddCImpl>();
-    const auto full_pkg   = cv::gapi::combine(custom_pkg, cv::gapi::core::cpu::kernels(), cv::unite_policy::KEEP);
+    const auto full_pkg   = cv::gapi::combine(custom_pkg, cv::gapi::core::cpu::kernels());
     cv::GComputation comp(cv::GIn(in1, in2, s), cv::GOut(out));
 
     cv::Mat in_mat1 = cv::Mat::eye(3, 3, CV_8UC1),
@@ -270,7 +270,7 @@ TEST(GCompoundKernel, DoubleAddC)
     comp.apply(cv::gin(in_mat1, in_mat2, scalar), cv::gout(out_mat), cv::compile_args(full_pkg));
     ref_mat = in_mat1 + in_mat2 + scalar + scalar + scalar;
 
-    EXPECT_EQ(0, cv::countNonZero(out_mat != ref_mat));
+    EXPECT_EQ(0, cvtest::norm(out_mat, ref_mat, NORM_INF));
 }
 
 TEST(GCompoundKernel, AddC)
@@ -282,7 +282,7 @@ TEST(GCompoundKernel, AddC)
     auto out       = cv::gapi::addC(super, s);
 
     const auto custom_pkg = cv::gapi::kernels<GCompoundAddCImpl>();
-    const auto full_pkg   = cv::gapi::combine(custom_pkg, cv::gapi::core::cpu::kernels(), cv::unite_policy::KEEP);
+    const auto full_pkg   = cv::gapi::combine(custom_pkg, cv::gapi::core::cpu::kernels());
     cv::GComputation comp(cv::GIn(in1, in2, s), cv::GOut(out));
 
     cv::Mat in_mat1 = cv::Mat::eye(3, 3, CV_8UC1),
@@ -295,7 +295,7 @@ TEST(GCompoundKernel, AddC)
     comp.apply(cv::gin(in_mat1, in_mat2, scalar), cv::gout(out_mat), cv::compile_args(full_pkg));
     ref_mat = in_mat1 + in_mat2 + scalar + scalar;
 
-    EXPECT_EQ(0, cv::countNonZero(out_mat != ref_mat));
+    EXPECT_EQ(0, cvtest::norm(out_mat, ref_mat, NORM_INF));
 }
 
 TEST(GCompoundKernel, MergeWithSplit)
@@ -308,14 +308,14 @@ TEST(GCompoundKernel, MergeWithSplit)
     auto out = cv::gapi::merge3(a2, b2, c2);
 
     const auto custom_pkg = cv::gapi::kernels<GCompoundMergeWithSplitImpl>();
-    const auto full_pkg   = cv::gapi::combine(custom_pkg, cv::gapi::core::cpu::kernels(), cv::unite_policy::KEEP);
+    const auto full_pkg   = cv::gapi::combine(custom_pkg, cv::gapi::core::cpu::kernels());
     cv::GComputation comp(cv::GIn(in), cv::GOut(out));
 
     cv::Mat in_mat = cv::Mat::eye(3, 3, CV_8UC3), out_mat, ref_mat;
     comp.apply(cv::gin(in_mat), cv::gout(out_mat), cv::compile_args(full_pkg));
     ref_mat = in_mat;
 
-    EXPECT_EQ(0, cv::countNonZero(out_mat != ref_mat));
+    EXPECT_EQ(0, cvtest::norm(out_mat, ref_mat, NORM_INF));
 }
 
 TEST(GCompoundKernel, AddWithAddC)
@@ -325,7 +325,7 @@ TEST(GCompoundKernel, AddWithAddC)
     auto out = GCompoundAddWithAddC::on(in1, in2, s);
 
     const auto custom_pkg = cv::gapi::kernels<GCompoundAddWithAddCImpl>();
-    const auto full_pkg   = cv::gapi::combine(custom_pkg, cv::gapi::core::cpu::kernels(), cv::unite_policy::KEEP);
+    const auto full_pkg   = cv::gapi::combine(custom_pkg, cv::gapi::core::cpu::kernels());
     cv::GComputation comp(cv::GIn(in1, in2, s), cv::GOut(out));
 
     cv::Mat in_mat1 = cv::Mat::eye(3, 3, CV_8UC1),
@@ -338,7 +338,7 @@ TEST(GCompoundKernel, AddWithAddC)
     comp.apply(cv::gin(in_mat1, in_mat2, scalar), cv::gout(out_mat), cv::compile_args(full_pkg));
     ref_mat = in_mat1 + in_mat2 + scalar;
 
-    EXPECT_EQ(0, cv::countNonZero(out_mat != ref_mat));
+    EXPECT_EQ(0, cvtest::norm(out_mat, ref_mat, NORM_INF));
 }
 
 TEST(GCompoundKernel, SplitWithAdd)
@@ -347,7 +347,7 @@ TEST(GCompoundKernel, SplitWithAdd)
     std::tie(out1, out2) = GCompoundSplitWithAdd::on(in);
 
     const auto custom_pkg = cv::gapi::kernels<GCompoundSplitWithAddImpl>();
-    const auto full_pkg   = cv::gapi::combine(custom_pkg, cv::gapi::core::cpu::kernels(), cv::unite_policy::KEEP);
+    const auto full_pkg   = cv::gapi::combine(custom_pkg, cv::gapi::core::cpu::kernels());
     cv::GComputation comp(cv::GIn(in), cv::GOut(out1, out2));
 
     cv::Mat in_mat = cv::Mat::eye(3, 3, CV_8UC3),
@@ -364,8 +364,8 @@ TEST(GCompoundKernel, SplitWithAdd)
     ref_mat1 = channels[0] + channels[1];
     ref_mat2 = channels[2];
 
-    EXPECT_EQ(0, cv::countNonZero(out_mat1 != ref_mat1));
-    EXPECT_EQ(0, cv::countNonZero(out_mat2 != ref_mat2));
+    EXPECT_EQ(0, cvtest::norm(out_mat1, ref_mat1, NORM_INF));
+    EXPECT_EQ(0, cvtest::norm(out_mat2, ref_mat2, NORM_INF));
 }
 
 TEST(GCompoundKernel, ParallelAddC)
@@ -375,7 +375,7 @@ TEST(GCompoundKernel, ParallelAddC)
     std::tie(out1, out2) = GCompoundParallelAddC::on(in1, in2);
 
     const auto custom_pkg = cv::gapi::kernels<GCompoundParallelAddCImpl>();
-    const auto full_pkg   = cv::gapi::combine(custom_pkg, cv::gapi::core::cpu::kernels(), cv::unite_policy::KEEP);
+    const auto full_pkg   = cv::gapi::combine(custom_pkg, cv::gapi::core::cpu::kernels());
     cv::GComputation comp(cv::GIn(in1, in2), cv::GOut(out1, out2));
 
     cv::Mat in_mat = cv::Mat::eye(3, 3, CV_8UC1),
@@ -391,8 +391,8 @@ TEST(GCompoundKernel, ParallelAddC)
     ref_mat1 = in_mat + scalar;
     ref_mat2 = in_mat + scalar;
 
-    EXPECT_EQ(0, cv::countNonZero(out_mat1 != ref_mat1));
-    EXPECT_EQ(0, cv::countNonZero(out_mat2 != ref_mat2));
+    EXPECT_EQ(0, cvtest::norm(out_mat1, ref_mat1, NORM_INF));
+    EXPECT_EQ(0, cvtest::norm(out_mat2, ref_mat2, NORM_INF));
 }
 
 TEST(GCompoundKernel, GCompundKernelAndDefaultUseOneData)
@@ -402,7 +402,7 @@ TEST(GCompoundKernel, GCompundKernelAndDefaultUseOneData)
     auto out = cv::gapi::add(GCompoundAddWithAddC::on(in1, in2, s), cv::gapi::addC(in2, s));
 
     const auto custom_pkg = cv::gapi::kernels<GCompoundAddWithAddCImpl>();
-    const auto full_pkg   = cv::gapi::combine(custom_pkg, cv::gapi::core::cpu::kernels(), cv::unite_policy::KEEP);
+    const auto full_pkg   = cv::gapi::combine(custom_pkg, cv::gapi::core::cpu::kernels());
     cv::GComputation comp(cv::GIn(in1, in2, s), cv::GOut(out));
 
     cv::Mat in_mat1 = cv::Mat::eye(3, 3, CV_8UC1),
@@ -415,7 +415,7 @@ TEST(GCompoundKernel, GCompundKernelAndDefaultUseOneData)
     comp.apply(cv::gin(in_mat1, in_mat2, scalar), cv::gout(out_mat), cv::compile_args(full_pkg));
     ref_mat = in_mat1 + in_mat2 + scalar + in_mat2 + scalar;
 
-    EXPECT_EQ(0, cv::countNonZero(out_mat != ref_mat));
+    EXPECT_EQ(0, cvtest::norm(out_mat, ref_mat, NORM_INF));
 }
 
 TEST(GCompoundKernel, CompoundExpandedToCompound)
@@ -428,7 +428,7 @@ TEST(GCompoundKernel, CompoundExpandedToCompound)
                                               GCompoundAddWithAddCImpl,
                                               GCompoundDoubleAddCImpl>();
 
-    const auto full_pkg   = cv::gapi::combine(custom_pkg, cv::gapi::core::cpu::kernels(), cv::unite_policy::KEEP);
+    const auto full_pkg   = cv::gapi::combine(custom_pkg, cv::gapi::core::cpu::kernels());
     cv::GComputation comp(cv::GIn(in1, in2, s), cv::GOut(out));
 
     cv::Mat in_mat1 = cv::Mat::eye(3, 3, CV_8UC1),
@@ -441,7 +441,7 @@ TEST(GCompoundKernel, CompoundExpandedToCompound)
     comp.apply(cv::gin(in_mat1, in_mat2, scalar), cv::gout(out_mat), cv::compile_args(full_pkg));
     ref_mat = in_mat1 + in_mat2 + scalar + scalar + scalar;
 
-    EXPECT_EQ(0, cv::countNonZero(out_mat != ref_mat));
+    EXPECT_EQ(0, cvtest::norm(out_mat, ref_mat, NORM_INF));
 }
 
 TEST(GCompoundKernel, MaxInArray)
@@ -449,7 +449,7 @@ TEST(GCompoundKernel, MaxInArray)
     GDoubleArray in;
     auto out = GCompoundMaxInArray::on(in);
     const auto custom_pkg = cv::gapi::kernels<GCompoundMaxInArrayImpl, GMaxInArrayImpl>();
-    const auto full_pkg   = cv::gapi::combine(custom_pkg, cv::gapi::core::cpu::kernels(), cv::unite_policy::KEEP);
+    const auto full_pkg   = cv::gapi::combine(custom_pkg, cv::gapi::core::cpu::kernels());
     cv::GComputation comp(cv::GIn(in), cv::GOut(out));
     std::vector<double> v = { 1, 5, -2, 3, 10, 2};
     cv::Scalar out_scl;
@@ -465,7 +465,7 @@ TEST(GCompoundKernel, NegateArray)
     GDoubleArray in;
     GDoubleArray out = GCompoundNegateArray::on(in);
     const auto custom_pkg = cv::gapi::kernels<GCompoundNegateArrayImpl, GNegateArrayImpl>();
-    const auto full_pkg   = cv::gapi::combine(custom_pkg, cv::gapi::core::cpu::kernels(), cv::unite_policy::KEEP);
+    const auto full_pkg   = cv::gapi::combine(custom_pkg, cv::gapi::core::cpu::kernels());
     cv::GComputation comp(cv::GIn(in), cv::GOut(out));
     std::vector<double> in_v = {1, 5, -2, -10, 3};
     std::vector<double> out_v;
@@ -483,7 +483,7 @@ TEST(GCompoundKernel, RightGArrayHandle)
     GDoubleArray a;
     cv::GMat out = GCompoundGMatGArrayGMat::on(in[0], a, in[1]);
     const auto custom_pkg = cv::gapi::kernels<GCompoundGMatGArrayGMatImpl, SetDiagKernelImpl>();
-    const auto full_pkg   = cv::gapi::combine(custom_pkg, cv::gapi::core::cpu::kernels(), cv::unite_policy::KEEP);
+    const auto full_pkg   = cv::gapi::combine(custom_pkg, cv::gapi::core::cpu::kernels());
     cv::GComputation comp(cv::GIn(in[0], a, in[1]), cv::GOut(out));
     std::vector<double> in_v(3, 1.0);
     cv::Mat in_mat1 = cv::Mat::eye(cv::Size(3, 3), CV_8UC1),
@@ -494,7 +494,7 @@ TEST(GCompoundKernel, RightGArrayHandle)
 
     comp.apply(cv::gin(in_mat1, in_v, in_mat2), cv::gout(out_mat), cv::compile_args(full_pkg));
 
-    EXPECT_EQ(0, cv::countNonZero(out_mat != ref_mat));
+    EXPECT_EQ(0, cvtest::norm(out_mat, ref_mat, NORM_INF));
 
 }
 } // opencv_test

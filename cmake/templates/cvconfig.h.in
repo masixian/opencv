@@ -34,11 +34,14 @@
 /* Cocoa API */
 #cmakedefine HAVE_COCOA
 
+/* NVIDIA CUDA Runtime API*/
+#cmakedefine HAVE_CUDA
+
 /* NVIDIA CUDA Basic Linear Algebra Subprograms (BLAS) API*/
 #cmakedefine HAVE_CUBLAS
 
-/* NVIDIA CUDA Runtime API*/
-#cmakedefine HAVE_CUDA
+/* NVIDIA CUDA Deep Neural Network (cuDNN) API*/
+#cmakedefine HAVE_CUDNN
 
 /* NVIDIA CUDA Fast Fourier Transform (FFT) API*/
 #cmakedefine HAVE_CUFFT
@@ -78,6 +81,7 @@
 #cmakedefine HAVE_IPP_IW_LL
 
 /* JPEG-2000 codec */
+#cmakedefine HAVE_OPENJPEG
 #cmakedefine HAVE_JASPER
 
 /* IJG JPEG codec */

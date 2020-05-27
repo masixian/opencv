@@ -7,9 +7,6 @@
 
 #include "precomp.hpp"
 
-#include <functional>
-#include <unordered_set>
-
 #include <ade/util/algorithm.hpp>
 
 #include <ade/util/range.hpp>
@@ -18,16 +15,14 @@
 
 #include <ade/typed_graph.hpp>
 
-#include "opencv2/gapi/gcommon.hpp"
-#include "opencv2/gapi/util/any.hpp"
-#include "opencv2/gapi/gtype_traits.hpp"
+#include <opencv2/gapi/gcommon.hpp>
+#include <opencv2/gapi/util/any.hpp>
+#include <opencv2/gapi/gtype_traits.hpp>
 
 #include "compiler/gobjref.hpp"
 #include "compiler/gmodel.hpp"
 
 #include "backends/cpu/gcpubackend.hpp"
-#include "backends/cpu/gcpuimgproc.hpp"
-#include "backends/cpu/gcpucore.hpp"
 
 #include "api/gbackend_priv.hpp" // FIXME: Make it part of Backend SDK!
 
@@ -76,7 +71,7 @@ cv::gapi::GBackend cv::gapi::cpu::backend()
     return this_backend;
 }
 
-// GCPUExcecutable implementation //////////////////////////////////////////////
+// GCPUExecutable implementation //////////////////////////////////////////////
 cv::gimpl::GCPUExecutable::GCPUExecutable(const ade::Graph &g,
                                           const std::vector<ade::NodeHandle> &nodes)
     : m_g(g), m_gm(m_g)
@@ -92,7 +87,7 @@ cv::gimpl::GCPUExecutable::GCPUExecutable(const ade::Graph &g,
         {
             m_dataNodes.push_back(nh);
             const auto &desc = m_gm.metadata(nh).get<Data>();
-            if (desc.storage == Data::Storage::CONST)
+            if (desc.storage == Data::Storage::CONST_VAL)
             {
                 auto rc = RcDesc{desc.rc, desc.shape, desc.ctor};
                 magazine::bindInArg(m_res, rc, m_gm.metadata(nh).get<ConstValue>().arg);
@@ -101,8 +96,8 @@ cv::gimpl::GCPUExecutable::GCPUExecutable(const ade::Graph &g,
             if (desc.storage == Data::Storage::INTERNAL && desc.shape == GShape::GMAT)
             {
                 const auto mat_desc = util::get<cv::GMatDesc>(desc.meta);
-                const auto type = CV_MAKETYPE(mat_desc.depth, mat_desc.chan);
-                m_res.slot<cv::gapi::own::Mat>()[desc.rc].create(mat_desc.size, type);
+                auto& mat = m_res.slot<cv::Mat>()[desc.rc];
+                createMat(mat_desc, mat);
             }
             break;
         }
@@ -118,7 +113,8 @@ cv::GArg cv::gimpl::GCPUExecutable::packArg(const GArg &arg)
     // FIXME: this check has to be done somewhere in compilation stage.
     GAPI_Assert(   arg.kind != cv::detail::ArgKind::GMAT
               && arg.kind != cv::detail::ArgKind::GSCALAR
-              && arg.kind != cv::detail::ArgKind::GARRAY);
+              && arg.kind != cv::detail::ArgKind::GARRAY
+              && arg.kind != cv::detail::ArgKind::GOPAQUE);
 
     if (arg.kind != cv::detail::ArgKind::GOBJREF)
     {
@@ -132,11 +128,12 @@ cv::GArg cv::gimpl::GCPUExecutable::packArg(const GArg &arg)
     const cv::gimpl::RcDesc &ref = arg.get<cv::gimpl::RcDesc>();
     switch (ref.shape)
     {
-    case GShape::GMAT:    return GArg(m_res.slot<cv::gapi::own::Mat>()   [ref.id]);
-    case GShape::GSCALAR: return GArg(m_res.slot<cv::gapi::own::Scalar>()[ref.id]);
-    // Note: .at() is intentional for GArray as object MUST be already there
+    case GShape::GMAT:    return GArg(m_res.slot<cv::Mat>()   [ref.id]);
+    case GShape::GSCALAR: return GArg(m_res.slot<cv::Scalar>()[ref.id]);
+    // Note: .at() is intentional for GArray and GOpaque as objects MUST be already there
     //   (and constructed by either bindIn/Out or resetInternal)
     case GShape::GARRAY:  return GArg(m_res.slot<cv::detail::VectorRef>().at(ref.id));
+    case GShape::GOPAQUE: return GArg(m_res.slot<cv::detail::OpaqueRef>().at(ref.id));
     default:
         util::throw_error(std::logic_error("Unsupported GShape type"));
         break;
@@ -207,14 +204,16 @@ void cv::gimpl::GCPUExecutable::run(std::vector<InObj>  &&input_objs,
         //As Kernels are forbidden to allocate memory for (Mat) outputs,
         //this code seems redundant, at least for Mats
         //FIXME: unify with cv::detail::ensure_out_mats_not_reallocated
+        //FIXME: when it's done, remove can_describe(const GMetaArg&, const GRunArgP&)
+        //and descr_of(const cv::GRunArgP &argp)
         for (const auto &out_it : ade::util::indexed(op_info.expected_out_metas))
         {
             const auto out_index      = ade::util::index(out_it);
             const auto expected_meta  = ade::util::value(out_it);
-            const auto out_meta       = descr_of(context.m_results[out_index]);
 
-            if (expected_meta != out_meta)
+            if (!can_describe(expected_meta, context.m_results[out_index]))
             {
+                const auto out_meta = descr_of(context.m_results[out_index]);
                 util::throw_error
                     (std::logic_error
                      ("Output meta doesn't "
